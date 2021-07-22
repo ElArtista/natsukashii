@@ -40,7 +40,7 @@ fn run() {
     let mut gfx = futures::executor::block_on(Gfx::new(&window));
 
     // Setup renderer
-    let renderer = DefaultRenderer::new();
+    let renderer = DefaultRenderer::new(&gfx.device, gfx.swapchain_desc.format);
 
     // Run window even loop
     event_loop.run(move |event, _, control_flow| {
