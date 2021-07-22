@@ -1,14 +1,22 @@
+use crate::mesh::{Index, IndexFormat, MeshBuffers, Vertex};
+
 pub trait Renderer {
     fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView);
 }
 
+#[derive(Default)]
+pub struct RendererScene {
+    pub meshes: Vec<MeshBuffers>,
+}
+
 pub struct DefaultRenderer {
     pipeline: wgpu::RenderPipeline,
+    scene: RendererScene,
 }
 
 impl DefaultRenderer {
     pub fn new(device: &wgpu::Device, target_format: wgpu::TextureFormat) -> Self {
-        let vsrc = include_shader!("fullscreen.vert");
+        let vsrc = include_shader!("demo.vert");
         let fsrc = include_shader!("demo.frag");
         let vshader = device.create_shader_module(&vsrc);
         let fshader = device.create_shader_module(&fsrc);
@@ -25,7 +33,7 @@ impl DefaultRenderer {
             vertex: wgpu::VertexState {
                 module: &vshader,
                 entry_point: "main",
-                buffers: &[],
+                buffers: &[Vertex::buffer_layout()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &fshader,
@@ -37,7 +45,14 @@ impl DefaultRenderer {
             multisample: wgpu::MultisampleState::default(),
         });
 
-        DefaultRenderer { pipeline }
+        DefaultRenderer {
+            pipeline,
+            scene: RendererScene::default(),
+        }
+    }
+
+    pub fn set_scene(&mut self, scene: RendererScene) {
+        self.scene = scene;
     }
 }
 
@@ -56,6 +71,12 @@ impl Renderer for DefaultRenderer {
             depth_stencil_attachment: None,
         });
         rpass.set_pipeline(&self.pipeline);
-        rpass.draw(0..3, 0..1);
+
+        let scene = &self.scene;
+        for mesh in &scene.meshes {
+            rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
+            rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
+            rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
+        }
     }
 }

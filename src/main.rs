@@ -7,12 +7,35 @@ mod mesh;
 mod renderer;
 
 use gfx::Gfx;
-use renderer::{DefaultRenderer, Renderer};
+use mesh::{Index, Mesh, Vertex};
+use renderer::{DefaultRenderer, Renderer, RendererScene};
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
+#[allow(dead_code)]
+fn demo_mesh() -> Mesh {
+    use genmesh::{
+        generators::{IcoSphere, IndexedPolygon, SharedVertex},
+        Triangulate,
+    };
+
+    let prim = IcoSphere::subdivide(1);
+    let vertices: Vec<Vertex> = prim
+        .shared_vertex_iter()
+        .map(|v| Vertex::new(v.pos.into()))
+        .collect();
+    let indices: Vec<Index> = prim
+        .indexed_polygon_iter()
+        .triangulate()
+        .map(|f| vec![f.x as _, f.y as _, f.z as _])
+        .flatten()
+        .collect();
+
+    Mesh { vertices, indices }
+}
 
 fn render(gfx: &Gfx, renderer: &dyn Renderer) {
     let (swapchain, device, queue) = (&gfx.swapchain, &gfx.device, &gfx.queue);
@@ -41,7 +64,16 @@ fn run() {
     let mut gfx = futures::executor::block_on(Gfx::new(&window));
 
     // Setup renderer
-    let renderer = DefaultRenderer::new(&gfx.device, gfx.swapchain_desc.format);
+    let mut renderer = DefaultRenderer::new(&gfx.device, gfx.swapchain_desc.format);
+
+    // Create demo mesh and buffers
+    let mesh = demo_mesh();
+    let buffers = mesh.create_buffers(&gfx.device);
+
+    // Create demo scene
+    renderer.set_scene(RendererScene {
+        meshes: vec![buffers],
+    });
 
     // Run window even loop
     event_loop.run(move |event, _, control_flow| {
