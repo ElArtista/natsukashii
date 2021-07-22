@@ -1,40 +1,28 @@
 extern crate log;
 
 mod gfx;
+mod renderer;
 
 use gfx::Gfx;
+use renderer::{DefaultRenderer, Renderer};
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
-fn render(gfx: &Gfx) {
-    let frame = gfx
-        .swapchain
+fn render(gfx: &Gfx, renderer: &dyn Renderer) {
+    let (swapchain, device, queue) = (&gfx.swapchain, &gfx.device, &gfx.queue);
+    let frame = swapchain
         .get_current_frame()
         .expect("Failed to acquire next swap chain texture")
         .output;
 
-    let mut encoder = gfx
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    {
-        let _rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: None,
-            color_attachments: &[wgpu::RenderPassColorAttachment {
-                view: &frame.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLUE),
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: None,
-        });
-    }
+    let encoder_desc = wgpu::CommandEncoderDescriptor { label: None };
+    let mut encoder = device.create_command_encoder(&encoder_desc);
 
-    gfx.queue.submit(Some(encoder.finish()));
+    renderer.render(&mut encoder, &frame.view);
+    queue.submit(Some(encoder.finish()));
 }
 
 fn run() {
@@ -48,6 +36,9 @@ fn run() {
 
     // Setup graphics
     let mut gfx = futures::executor::block_on(Gfx::new(&window));
+
+    // Setup renderer
+    let renderer = DefaultRenderer::new();
 
     // Run window even loop
     event_loop.run(move |event, _, control_flow| {
@@ -71,7 +62,7 @@ fn run() {
                 _ => (),
             },
             // Handle redraw event
-            Event::RedrawRequested(_) => render(&gfx),
+            Event::RedrawRequested(_) => render(&gfx, &renderer),
             // Handle events processed event
             Event::MainEventsCleared => window.request_redraw(),
             _ => (),
