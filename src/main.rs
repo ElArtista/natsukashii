@@ -3,6 +3,7 @@ extern crate log;
 #[macro_use]
 mod shader;
 mod gfx;
+mod mesh;
 mod renderer;
 
 use gfx::Gfx;
