@@ -1,5 +1,7 @@
 extern crate log;
 
+#[macro_use]
+mod shader;
 mod gfx;
 mod renderer;
 
