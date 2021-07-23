@@ -66,7 +66,7 @@ fn run() {
     let mut gfx = futures::executor::block_on(Gfx::new(&window));
 
     // Setup renderer
-    let mut renderer = DefaultRenderer::new(&gfx.device, gfx.swapchain_desc.format);
+    let mut renderer = DefaultRenderer::new(&gfx.device, &gfx.swapchain_desc);
 
     // Create demo mesh and buffers
     let mesh = demo_mesh();

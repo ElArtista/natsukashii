@@ -24,11 +24,12 @@ pub struct DefaultRenderer {
     pipeline: wgpu::RenderPipeline,
     vp_buffer: wgpu::Buffer,
     vp_bind_group: wgpu::BindGroup,
+    depth_texture_view: wgpu::TextureView,
     scene: RendererScene,
 }
 
 impl DefaultRenderer {
-    pub fn new(device: &wgpu::Device, target_format: wgpu::TextureFormat) -> Self {
+    pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
         let vsrc = include_shader!("demo.vert");
         let fsrc = include_shader!("demo.frag");
         let vshader = device.create_shader_module(&vsrc);
@@ -45,6 +46,22 @@ impl DefaultRenderer {
                 resource: vp_buffer.as_entire_binding(),
             }],
         });
+
+        let depth_format = wgpu::TextureFormat::Depth32Float;
+        let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
+            size: wgpu::Extent3d {
+                width: swapchain_desc.width,
+                height: swapchain_desc.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: depth_format,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+            label: None,
+        });
+        let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
@@ -63,10 +80,16 @@ impl DefaultRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &fshader,
                 entry_point: "main",
-                targets: &[target_format.into()],
+                targets: &[swapchain_desc.format.into()],
             }),
             primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: depth_format,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState::default(),
         });
 
@@ -74,6 +97,7 @@ impl DefaultRenderer {
             pipeline,
             vp_buffer,
             vp_bind_group,
+            depth_texture_view,
             scene: RendererScene::default(),
         }
     }
@@ -110,7 +134,14 @@ impl Renderer for DefaultRenderer {
                     store: true,
                 },
             }],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: true,
+                }),
+                stencil_ops: None,
+            }),
         });
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.vp_bind_group, &[]);
