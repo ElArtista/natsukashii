@@ -5,8 +5,10 @@ mod shader;
 mod gfx;
 mod mesh;
 mod renderer;
+mod uniform;
 
 use gfx::Gfx;
+use glam::{Mat4, Vec3};
 use mesh::{Index, Mesh, Vertex};
 use renderer::{DefaultRenderer, Renderer, RendererScene};
 use winit::{
@@ -47,7 +49,7 @@ fn render(gfx: &Gfx, renderer: &dyn Renderer) {
     let encoder_desc = wgpu::CommandEncoderDescriptor { label: None };
     let mut encoder = device.create_command_encoder(&encoder_desc);
 
-    renderer.render(&mut encoder, &frame.view);
+    renderer.render(&mut encoder, queue, &frame.view);
     queue.submit(Some(encoder.finish()));
 }
 
@@ -73,6 +75,13 @@ fn run() {
     // Create demo scene
     renderer.set_scene(RendererScene {
         meshes: vec![buffers],
+        view: Mat4::look_at_rh((0.0, 0.0, 4.0).into(), Vec3::ZERO, Vec3::Y),
+        proj: Mat4::perspective_rh_gl(
+            (45.0 as f32).to_radians(),
+            gfx.swapchain_desc.width as f32 / gfx.swapchain_desc.height as f32,
+            0.1,
+            100.0,
+        ),
     });
 
     // Run window even loop
