@@ -139,34 +139,38 @@ impl Renderer for DefaultRenderer {
             }),
         );
 
-        // Setup render pass
-        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: None,
-            color_attachments: &[wgpu::RenderPassColorAttachment {
-                view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.depth_texture_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: true,
+        {
+            // Begin render pass
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: true,
+                    }),
+                    stencil_ops: None,
                 }),
-                stencil_ops: None,
-            }),
-        });
-        rpass.set_pipeline(&self.pipeline);
-        rpass.set_bind_group(0, &self.vp_bind_group, &[]);
+            });
 
-        // Draw meshes
-        for mesh in &scene.meshes {
-            rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
-            rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
-            rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
+            // Set pipeline and bind groups
+            rpass.set_pipeline(&self.pipeline);
+            rpass.set_bind_group(0, &self.vp_bind_group, &[]);
+
+            // Draw meshes
+            for mesh in &scene.meshes {
+                rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
+                rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
+                rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
+            }
         }
     }
 }
