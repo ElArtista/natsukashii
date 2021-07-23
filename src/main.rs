@@ -40,15 +40,18 @@ fn demo_mesh() -> Mesh {
 }
 
 fn render(gfx: &Gfx, renderer: &dyn Renderer) {
+    // Acquire frame
     let (swapchain, device, queue) = (&gfx.swapchain, &gfx.device, &gfx.queue);
     let frame = swapchain
         .get_current_frame()
         .expect("Failed to acquire next swap chain texture")
         .output;
 
+    // Create encoder
     let encoder_desc = wgpu::CommandEncoderDescriptor { label: None };
     let mut encoder = device.create_command_encoder(&encoder_desc);
 
+    // Render and submit the queue
     renderer.render(&mut encoder, queue, &frame.view);
     queue.submit(Some(encoder.finish()));
 }
@@ -115,8 +118,11 @@ fn run() {
 }
 
 fn main() {
+    // Initialize logging
     let log_env = env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info");
     env_logger::init_from_env(log_env);
     log::info!("Hello there!");
+
+    // Run real entrypoint
     run();
 }

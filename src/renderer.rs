@@ -30,11 +30,13 @@ pub struct DefaultRenderer {
 
 impl DefaultRenderer {
     pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
+        // Load and create shaders
         let vsrc = include_shader!("demo.vert");
         let fsrc = include_shader!("demo.frag");
         let vshader = device.create_shader_module(&vsrc);
         let fshader = device.create_shader_module(&fsrc);
 
+        // Setup view projetion uniform
         let vp_data = ViewProjUniform::default();
         let vp_layout = ViewProjUniform::layout(&device);
         let vp_buffer = vp_data.create_buffer(&device);
@@ -47,6 +49,7 @@ impl DefaultRenderer {
             }],
         });
 
+        // Setup depth texture
         let depth_format = wgpu::TextureFormat::Depth32Float;
         let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
@@ -63,6 +66,7 @@ impl DefaultRenderer {
         });
         let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+        // Setup pipeline
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[&vp_layout],
@@ -114,6 +118,7 @@ impl Renderer for DefaultRenderer {
         queue: &wgpu::Queue,
         view: &wgpu::TextureView,
     ) {
+        // Update view projection uniform
         let scene = &self.scene;
         queue.write_buffer(
             &self.vp_buffer,
@@ -124,6 +129,7 @@ impl Renderer for DefaultRenderer {
             }),
         );
 
+        // Setup render pass
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[wgpu::RenderPassColorAttachment {
@@ -146,6 +152,7 @@ impl Renderer for DefaultRenderer {
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.vp_bind_group, &[]);
 
+        // Draw meshes
         for mesh in &scene.meshes {
             rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
             rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
