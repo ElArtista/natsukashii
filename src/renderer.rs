@@ -30,12 +30,6 @@ pub struct DefaultRenderer {
 
 impl DefaultRenderer {
     pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
-        // Load and create shaders
-        let vsrc = include_shader!("demo.vert");
-        let fsrc = include_shader!("demo.frag");
-        let vshader = device.create_shader_module(&vsrc);
-        let fshader = device.create_shader_module(&fsrc);
-
         // Setup view projetion uniform
         let vp_data = ViewProjUniform::default();
         let vp_layout = ViewProjUniform::layout(&device);
@@ -66,13 +60,35 @@ impl DefaultRenderer {
         });
         let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        // Setup pipeline
+        // Setup forward pass
+        let pipeline =
+            Self::build_forward_pass(device, &vp_layout, swapchain_desc.format, depth_format);
+
+        DefaultRenderer {
+            pipeline,
+            vp_buffer,
+            vp_bind_group,
+            depth_texture_view,
+            scene: RendererScene::default(),
+        }
+    }
+
+    fn build_forward_pass(
+        device: &wgpu::Device,
+        vp_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+        depth_format: wgpu::TextureFormat,
+    ) -> wgpu::RenderPipeline {
+        let vsrc = include_shader!("demo.vert");
+        let fsrc = include_shader!("demo.frag");
+        let vshader = device.create_shader_module(&vsrc);
+        let fshader = device.create_shader_module(&fsrc);
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&vp_layout],
+            bind_group_layouts: &[vp_layout],
             push_constant_ranges: &[],
         });
-
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
@@ -84,7 +100,7 @@ impl DefaultRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &fshader,
                 entry_point: "main",
-                targets: &[swapchain_desc.format.into()],
+                targets: &[color_format.into()],
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: Some(wgpu::DepthStencilState {
@@ -97,13 +113,7 @@ impl DefaultRenderer {
             multisample: wgpu::MultisampleState::default(),
         });
 
-        DefaultRenderer {
-            pipeline,
-            vp_buffer,
-            vp_bind_group,
-            depth_texture_view,
-            scene: RendererScene::default(),
-        }
+        pipeline
     }
 
     pub fn set_scene(&mut self, scene: RendererScene) {
