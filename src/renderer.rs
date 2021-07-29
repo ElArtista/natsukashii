@@ -8,11 +8,12 @@ use crate::{
 };
 use glam::Mat4;
 
+/// The Renderer
+///
+/// Manages GPU specific objects and performs the rendering
 pub struct Renderer {
-    pipeline: wgpu::RenderPipeline,
-    vp_buffer: wgpu::Buffer,
-    vp_bind_group: wgpu::BindGroup,
-    depth_texture_view: wgpu::TextureView,
+    view_proj: ViewProj,
+    demo_pass: DemoPass,
     scene: RendererScene,
 }
 
@@ -23,22 +24,85 @@ pub struct RendererScene {
     pub proj: Mat4,
 }
 
+#[allow(dead_code)]
+struct ViewProj {
+    data: ViewProjUniform,
+    buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
+}
+
+struct DemoPass {
+    pipeline: wgpu::RenderPipeline,
+    depth_texture_view: wgpu::TextureView,
+}
+
 impl Renderer {
     pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
         // Setup view projetion uniform
-        let vp_data = ViewProjUniform::default();
-        let vp_layout = ViewProjUniform::layout(&device);
-        let vp_buffer = vp_data.create_buffer(&device);
-        let vp_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let view_proj_data = ViewProjUniform::default();
+        let view_proj_layout = ViewProjUniform::layout(&device);
+        let view_proj_buffer = view_proj_data.create_buffer(&device);
+        let view_proj_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &vp_layout,
+            layout: &view_proj_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: vp_buffer.as_entire_binding(),
+                resource: view_proj_buffer.as_entire_binding(),
             }],
         });
 
-        // Setup depth texture
+        // Setup demo pass
+        let demo_pass = DemoPass::new(device, swapchain_desc, &view_proj_layout);
+
+        Renderer {
+            view_proj: ViewProj {
+                data: view_proj_data,
+                buffer: view_proj_buffer,
+                bind_group: view_proj_bind_group,
+            },
+            demo_pass,
+            scene: RendererScene::default(),
+        }
+    }
+
+    pub fn render(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        queue: &wgpu::Queue,
+        view: &wgpu::TextureView,
+    ) {
+        // Update view projection uniform
+        let scene = &self.scene;
+        queue.write_buffer(
+            &self.view_proj.buffer,
+            0,
+            bytemuck::bytes_of(&ViewProjUniform {
+                view: scene.view,
+                proj: scene.proj,
+            }),
+        );
+
+        // Make demo pass
+        self.demo_pass
+            .execute(encoder, view, &self.view_proj.bind_group, scene);
+    }
+
+    pub fn set_scene(&mut self, scene: RendererScene) {
+        self.scene = scene;
+    }
+}
+
+impl DemoPass {
+    pub fn new(
+        device: &wgpu::Device,
+        swapchain_desc: &wgpu::SwapChainDescriptor,
+        view_proj_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let vsrc = include_shader!("demo.vert");
+        let fsrc = include_shader!("demo.frag");
+        let vshader = device.create_shader_module(&vsrc);
+        let fshader = device.create_shader_module(&fsrc);
+
         let depth_format = wgpu::TextureFormat::Depth32Float;
         let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
@@ -55,33 +119,9 @@ impl Renderer {
         });
         let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        // Setup forward pass
-        let pipeline =
-            Self::build_forward_pass(device, &vp_layout, swapchain_desc.format, depth_format);
-
-        Renderer {
-            pipeline,
-            vp_buffer,
-            vp_bind_group,
-            depth_texture_view,
-            scene: RendererScene::default(),
-        }
-    }
-
-    fn build_forward_pass(
-        device: &wgpu::Device,
-        vp_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-        depth_format: wgpu::TextureFormat,
-    ) -> wgpu::RenderPipeline {
-        let vsrc = include_shader!("demo.vert");
-        let fsrc = include_shader!("demo.frag");
-        let vshader = device.create_shader_module(&vsrc);
-        let fshader = device.create_shader_module(&fsrc);
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[vp_layout],
+            bind_group_layouts: &[view_proj_layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -95,7 +135,7 @@ impl Renderer {
             fragment: Some(wgpu::FragmentState {
                 module: &fshader,
                 entry_point: "main",
-                targets: &[color_format.into()],
+                targets: &[swapchain_desc.format.into()],
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: Some(wgpu::DepthStencilState {
@@ -108,62 +148,46 @@ impl Renderer {
             multisample: wgpu::MultisampleState::default(),
         });
 
-        pipeline
-    }
-
-    pub fn render(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        queue: &wgpu::Queue,
-        view: &wgpu::TextureView,
-    ) {
-        // Update view projection uniform
-        let scene = &self.scene;
-        queue.write_buffer(
-            &self.vp_buffer,
-            0,
-            bytemuck::bytes_of(&ViewProjUniform {
-                view: scene.view,
-                proj: scene.proj,
-            }),
-        );
-
-        {
-            // Begin render pass
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: true,
-                    },
-                }],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: true,
-                    }),
-                    stencil_ops: None,
-                }),
-            });
-
-            // Set pipeline and bind groups
-            rpass.set_pipeline(&self.pipeline);
-            rpass.set_bind_group(0, &self.vp_bind_group, &[]);
-
-            // Draw meshes
-            for mesh in &scene.meshes {
-                rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
-                rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
-                rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
-            }
+        DemoPass {
+            pipeline,
+            depth_texture_view,
         }
     }
 
-    pub fn set_scene(&mut self, scene: RendererScene) {
-        self.scene = scene;
+    fn execute(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        color_texture_view: &wgpu::TextureView,
+        view_proj_bind_group: &wgpu::BindGroup,
+        scene: &RendererScene,
+    ) {
+        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[wgpu::RenderPassColorAttachment {
+                view: color_texture_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: true,
+                }),
+                stencil_ops: None,
+            }),
+        });
+
+        rpass.set_pipeline(&self.pipeline);
+        rpass.set_bind_group(0, &view_proj_bind_group, &[]);
+
+        for mesh in &scene.meshes {
+            rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
+            rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
+            rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
+        }
     }
 }
