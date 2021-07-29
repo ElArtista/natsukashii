@@ -1,3 +1,7 @@
+//
+// renderer.rs
+//
+
 use crate::{
     mesh::{Index, IndexFormat, MeshBuffers, Vertex},
     uniform::ViewProjUniform,

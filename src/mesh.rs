@@ -1,3 +1,7 @@
+//
+// mesh.rs
+//
+
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 use std::mem::size_of;

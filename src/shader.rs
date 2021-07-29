@@ -1,3 +1,7 @@
+//
+// shader.rs
+//
+
 #[macro_export]
 macro_rules! shader_file {
     ($x:expr) => {

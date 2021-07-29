@@ -1,3 +1,7 @@
+//
+// uniform.rs
+//
+
 use bytemuck::{Pod, Zeroable};
 use glam::Mat4;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
