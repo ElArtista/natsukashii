@@ -8,19 +8,19 @@ use crate::{
 };
 use glam::Mat4;
 
-#[derive(Default)]
-pub struct RendererScene {
-    pub meshes: Vec<MeshBuffers>,
-    pub view: Mat4,
-    pub proj: Mat4,
-}
-
 pub struct Renderer {
     pipeline: wgpu::RenderPipeline,
     vp_buffer: wgpu::Buffer,
     vp_bind_group: wgpu::BindGroup,
     depth_texture_view: wgpu::TextureView,
     scene: RendererScene,
+}
+
+#[derive(Default)]
+pub struct RendererScene {
+    pub meshes: Vec<MeshBuffers>,
+    pub view: Mat4,
+    pub proj: Mat4,
 }
 
 impl Renderer {

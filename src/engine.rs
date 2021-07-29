@@ -11,16 +11,6 @@ use winit::{
     window::WindowBuilder,
 };
 
-/// Initialization parameters for Engine
-pub struct EngineParams {
-    pub window: WindowParams,
-}
-
-/// Initialization parameters for Window
-pub struct WindowParams {
-    pub size: (u32, u32),
-}
-
 /// The Engine
 ///
 /// Manages initialization, lifetime and plumbing of
@@ -36,6 +26,16 @@ pub struct Engine {
     pub swapchain: wgpu::SwapChain,
     pub swapchain_desc: wgpu::SwapChainDescriptor,
     pub renderer: Renderer,
+}
+
+/// Initialization parameters for Engine
+pub struct EngineParams {
+    pub window: WindowParams,
+}
+
+/// Initialization parameters for Window
+pub struct WindowParams {
+    pub size: (u32, u32),
 }
 
 impl Engine {
