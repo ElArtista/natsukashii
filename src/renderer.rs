@@ -14,7 +14,6 @@ use glam::Mat4;
 pub struct Renderer {
     view_proj: ViewProj,
     demo_pass: DemoPass,
-    scene: RendererScene,
 }
 
 #[derive(Default)]
@@ -61,7 +60,6 @@ impl Renderer {
                 bind_group: view_proj_bind_group,
             },
             demo_pass,
-            scene: RendererScene::default(),
         }
     }
 
@@ -70,9 +68,9 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         queue: &wgpu::Queue,
         view: &wgpu::TextureView,
+        scene: &RendererScene,
     ) {
         // Update view projection uniform
-        let scene = &self.scene;
         queue.write_buffer(
             &self.view_proj.buffer,
             0,
@@ -85,10 +83,6 @@ impl Renderer {
         // Make demo pass
         self.demo_pass
             .execute(encoder, view, &self.view_proj.bind_group, scene);
-    }
-
-    pub fn set_scene(&mut self, scene: RendererScene) {
-        self.scene = scene;
     }
 }
 

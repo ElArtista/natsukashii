@@ -26,6 +26,7 @@ pub struct Engine {
     pub swapchain: wgpu::SwapChain,
     pub swapchain_desc: wgpu::SwapChainDescriptor,
     pub renderer: Renderer,
+    pub scene: RendererScene,
 }
 
 /// Initialization parameters for Engine
@@ -88,6 +89,9 @@ impl Engine {
         // Create the renderer
         let renderer = Renderer::new(&device, &swapchain_desc);
 
+        // Create default empty scene
+        let scene = RendererScene::default();
+
         // Store objects
         Self {
             event_loop: Some(event_loop),
@@ -100,6 +104,7 @@ impl Engine {
             swapchain,
             swapchain_desc,
             renderer,
+            scene,
         }
     }
 
@@ -125,7 +130,8 @@ impl Engine {
         let mut encoder = device.create_command_encoder(&encoder_desc);
 
         // Render and submit the queue
-        self.renderer.render(&mut encoder, queue, &frame.view);
+        self.renderer
+            .render(&mut encoder, queue, &frame.view, &self.scene);
         queue.submit(Some(encoder.finish()));
     }
 
@@ -160,6 +166,6 @@ impl Engine {
     }
 
     pub fn set_scene(&mut self, scene: RendererScene) {
-        self.renderer.set_scene(scene);
+        self.scene = scene;
     }
 }
