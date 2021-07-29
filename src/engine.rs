@@ -2,7 +2,7 @@
 // engine.rs
 //
 
-use super::renderer::{DefaultRenderer, Renderer, RendererScene};
+use super::renderer::{Renderer, RendererScene};
 use winit::{
     dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -35,7 +35,7 @@ pub struct Engine {
     pub queue: wgpu::Queue,
     pub swapchain: wgpu::SwapChain,
     pub swapchain_desc: wgpu::SwapChainDescriptor,
-    pub renderer: DefaultRenderer,
+    pub renderer: Renderer,
 }
 
 impl Engine {
@@ -86,7 +86,7 @@ impl Engine {
         let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
 
         // Create the renderer
-        let renderer = DefaultRenderer::new(&device, &swapchain_desc);
+        let renderer = Renderer::new(&device, &swapchain_desc);
 
         // Store objects
         Self {

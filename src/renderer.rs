@@ -8,15 +8,6 @@ use crate::{
 };
 use glam::Mat4;
 
-pub trait Renderer {
-    fn render(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        queue: &wgpu::Queue,
-        view: &wgpu::TextureView,
-    );
-}
-
 #[derive(Default)]
 pub struct RendererScene {
     pub meshes: Vec<MeshBuffers>,
@@ -24,7 +15,7 @@ pub struct RendererScene {
     pub proj: Mat4,
 }
 
-pub struct DefaultRenderer {
+pub struct Renderer {
     pipeline: wgpu::RenderPipeline,
     vp_buffer: wgpu::Buffer,
     vp_bind_group: wgpu::BindGroup,
@@ -32,7 +23,7 @@ pub struct DefaultRenderer {
     scene: RendererScene,
 }
 
-impl DefaultRenderer {
+impl Renderer {
     pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
         // Setup view projetion uniform
         let vp_data = ViewProjUniform::default();
@@ -68,7 +59,7 @@ impl DefaultRenderer {
         let pipeline =
             Self::build_forward_pass(device, &vp_layout, swapchain_desc.format, depth_format);
 
-        DefaultRenderer {
+        Renderer {
             pipeline,
             vp_buffer,
             vp_bind_group,
@@ -120,13 +111,7 @@ impl DefaultRenderer {
         pipeline
     }
 
-    pub fn set_scene(&mut self, scene: RendererScene) {
-        self.scene = scene;
-    }
-}
-
-impl Renderer for DefaultRenderer {
-    fn render(
+    pub fn render(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         queue: &wgpu::Queue,
@@ -176,5 +161,9 @@ impl Renderer for DefaultRenderer {
                 rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
             }
         }
+    }
+
+    pub fn set_scene(&mut self, scene: RendererScene) {
+        self.scene = scene;
     }
 }
