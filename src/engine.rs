@@ -5,7 +5,7 @@
 use super::renderer::{Renderer, RendererScene};
 use winit::{
     dpi::PhysicalSize,
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
     window::WindowBuilder,
@@ -152,12 +152,31 @@ impl Engine {
                             self.resize((*new_inner_size).into())
                         }
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::MouseInput { button, state, .. }
+                            if state == ElementState::Pressed =>
+                        {
+                            match button {
+                                MouseButton::Left => {
+                                    self.window.set_cursor_grab(true).unwrap();
+                                    self.window.set_cursor_visible(false);
+                                }
+                                _ => (),
+                            }
+                        }
                         WindowEvent::KeyboardInput { input, .. } => match input {
                             KeyboardInput {
                                 state: ElementState::Pressed,
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
                                 ..
                             } => *control_flow = ControlFlow::Exit,
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::LControl),
+                                ..
+                            } => {
+                                self.window.set_cursor_grab(false).unwrap();
+                                self.window.set_cursor_visible(true);
+                            }
                             _ => (),
                         },
                         _ => (),
