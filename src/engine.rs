@@ -148,6 +148,9 @@ impl Engine {
                 Event::WindowEvent { event, window_id } if window_id == self.window.id() => {
                     match event {
                         WindowEvent::Resized(size) => self.resize(size.into()),
+                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                            self.resize((*new_inner_size).into())
+                        }
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::KeyboardInput { input, .. } => match input {
                             KeyboardInput {
