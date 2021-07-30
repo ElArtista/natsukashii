@@ -115,6 +115,8 @@ impl Engine {
         self.swapchain = self
             .device
             .create_swap_chain(&self.surface, &self.swapchain_desc);
+        // Resize renderer resources
+        self.renderer.resize(&self.device, &self.swapchain_desc);
     }
 
     pub fn render(&self) {

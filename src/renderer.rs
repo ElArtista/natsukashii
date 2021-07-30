@@ -27,6 +27,7 @@ pub struct RendererScene {
 struct ViewProj {
     data: ViewProjUniform,
     buffer: wgpu::Buffer,
+    layout: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
 }
 
@@ -57,10 +58,16 @@ impl Renderer {
             view_proj: ViewProj {
                 data: view_proj_data,
                 buffer: view_proj_buffer,
+                layout: view_proj_layout,
                 bind_group: view_proj_bind_group,
             },
             demo_pass,
         }
+    }
+
+    pub fn resize(&mut self, device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) {
+        // Recreate swapchain dependent passes
+        self.demo_pass = DemoPass::new(device, swapchain_desc, &self.view_proj.layout);
     }
 
     pub fn render(
