@@ -20,7 +20,6 @@ pub struct Renderer {
 pub struct RendererScene {
     pub meshes: Vec<MeshBuffers>,
     pub view: Mat4,
-    pub proj: Mat4,
 }
 
 #[allow(dead_code)]
@@ -39,7 +38,15 @@ struct DemoPass {
 impl Renderer {
     pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
         // Setup view projetion uniform
-        let view_proj_data = ViewProjUniform::default();
+        let view_proj_data = ViewProjUniform {
+            proj: Mat4::perspective_rh_gl(
+                (45.0f32).to_radians(),
+                swapchain_desc.width as f32 / swapchain_desc.height as f32,
+                0.1,
+                100.0,
+            ),
+            ..Default::default()
+        };
         let view_proj_layout = ViewProjUniform::layout(&device);
         let view_proj_buffer = view_proj_data.create_buffer(&device);
         let view_proj_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -78,18 +85,18 @@ impl Renderer {
         scene: &RendererScene,
     ) {
         // Update view projection uniform
+        let vp = &self.view_proj;
         queue.write_buffer(
-            &self.view_proj.buffer,
+            &vp.buffer,
             0,
             bytemuck::bytes_of(&ViewProjUniform {
                 view: scene.view,
-                proj: scene.proj,
+                ..vp.data
             }),
         );
 
         // Make demo pass
-        self.demo_pass
-            .execute(encoder, view, &self.view_proj.bind_group, scene);
+        self.demo_pass.execute(encoder, view, &vp.bind_group, scene);
     }
 }
 

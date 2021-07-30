@@ -57,13 +57,11 @@ fn main() {
     let buffers = mesh.create_buffers(&engine.device);
 
     // Create demo scene
-    let aspect = params.window.size.0 as f32 / params.window.size.1 as f32;
-    let view = Mat4::look_at_rh((0.0, 0.0, 4.0).into(), Vec3::ZERO, Vec3::Y);
-    let proj = Mat4::perspective_rh_gl((45.0 as f32).to_radians(), aspect, 0.1, 100.0);
+    let cpos = (0.0, 0.0, 4.0).into();
+    let view = Mat4::look_at_rh(cpos, Vec3::ZERO, Vec3::Y);
     let scene = RendererScene {
         meshes: vec![buffers],
         view,
-        proj,
     };
     engine.set_scene(scene);
 
