@@ -184,7 +184,7 @@ impl Engine {
                             } => *control_flow = ControlFlow::Exit,
                             KeyboardInput {
                                 state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::LControl),
+                                virtual_keycode: Some(VirtualKeyCode::RControl),
                                 ..
                             } => {
                                 self.window.set_cursor_grab(false).unwrap();
