@@ -27,6 +27,7 @@ pub struct Engine {
     pub swapchain_desc: wgpu::SwapChainDescriptor,
     pub renderer: Renderer,
     pub scene: RendererScene,
+    pub state: EngineState,
 }
 
 /// Initialization parameters for Engine
@@ -37,6 +38,11 @@ pub struct EngineParams {
 /// Initialization parameters for Window
 pub struct WindowParams {
     pub size: (u32, u32),
+}
+
+/// Supplemental engine state
+pub struct EngineState {
+    pub cursor_grabbed: bool,
 }
 
 impl Engine {
@@ -92,6 +98,11 @@ impl Engine {
         // Create default empty scene
         let scene = RendererScene::default();
 
+        // Initialize supplemental engine state
+        let state = EngineState {
+            cursor_grabbed: false,
+        };
+
         // Store objects
         Self {
             event_loop: Some(event_loop),
@@ -105,6 +116,7 @@ impl Engine {
             swapchain_desc,
             renderer,
             scene,
+            state,
         }
     }
 
@@ -159,6 +171,7 @@ impl Engine {
                                 MouseButton::Left => {
                                     self.window.set_cursor_grab(true).unwrap();
                                     self.window.set_cursor_visible(false);
+                                    self.state.cursor_grabbed = true;
                                 }
                                 _ => (),
                             }
@@ -176,6 +189,7 @@ impl Engine {
                             } => {
                                 self.window.set_cursor_grab(false).unwrap();
                                 self.window.set_cursor_visible(true);
+                                self.state.cursor_grabbed = false;
                             }
                             _ => (),
                         },
