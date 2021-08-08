@@ -3,9 +3,12 @@
 //
 
 use super::{
+    camera::{Camera, CameraMoveDirection},
     input::Input,
     renderer::{Renderer, RendererScene},
 };
+
+use glam::Vec3;
 use winit::{
     dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
@@ -31,6 +34,7 @@ pub struct Engine {
     pub swapchain_desc: wgpu::SwapChainDescriptor,
     pub renderer: Renderer,
     pub scene: RendererScene,
+    pub camera: Camera,
     pub state: EngineState,
 }
 
@@ -105,6 +109,9 @@ impl Engine {
         // Create default empty scene
         let scene = RendererScene::default();
 
+        // Create the camera
+        let camera = Camera::new();
+
         // Initialize supplemental engine state
         let state = EngineState {
             cursor_grabbed: false,
@@ -124,6 +131,7 @@ impl Engine {
             swapchain_desc,
             renderer,
             scene,
+            camera,
             state,
         }
     }
@@ -137,6 +145,31 @@ impl Engine {
             .create_swap_chain(&self.surface, &self.swapchain_desc);
         // Resize renderer resources
         self.renderer.resize(&self.device, &self.swapchain_desc);
+    }
+
+    pub fn update(&mut self) {
+        let dt = 1.0 / 60.0; // TODO: Calculate this
+
+        let camkeys = [
+            (VirtualKeyCode::W, CameraMoveDirection::Forward),
+            (VirtualKeyCode::A, CameraMoveDirection::Left),
+            (VirtualKeyCode::S, CameraMoveDirection::Backward),
+            (VirtualKeyCode::D, CameraMoveDirection::Right),
+        ];
+        let dirs = camkeys
+            .iter()
+            .filter(|k| self.input.key_held(k.0))
+            .map(|k| k.1)
+            .collect::<Vec<_>>();
+        self.camera.move_to(&dirs, dt);
+
+        if self.state.cursor_grabbed {
+            let look_diff = self.input.mouse_diff();
+            self.camera.look(look_diff.into(), dt);
+        }
+
+        self.camera.update(dt);
+        self.scene.view = self.camera.matrix();
     }
 
     pub fn render(&self) {
@@ -205,7 +238,10 @@ impl Engine {
                         _ => (),
                     }
                 }
-                Event::RedrawRequested(_) => self.render(),
+                Event::RedrawRequested(_) => {
+                    self.update();
+                    self.render();
+                }
                 Event::MainEventsCleared => self.window.request_redraw(),
                 _ => (),
             }
@@ -214,5 +250,9 @@ impl Engine {
 
     pub fn set_scene(&mut self, scene: RendererScene) {
         self.scene = scene;
+    }
+
+    pub fn set_camera_position(&mut self, position: Vec3) {
+        self.camera.set_position(position);
     }
 }

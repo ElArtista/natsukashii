@@ -6,6 +6,7 @@ extern crate log;
 
 #[macro_use]
 mod shader;
+mod camera;
 mod engine;
 mod input;
 mod mesh;
@@ -65,6 +66,7 @@ fn main() {
         view,
     };
     engine.set_scene(scene);
+    engine.set_camera_position(cpos);
 
     // Run
     engine.run();
