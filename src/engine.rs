@@ -2,7 +2,10 @@
 // engine.rs
 //
 
-use super::renderer::{Renderer, RendererScene};
+use super::{
+    input::Input,
+    renderer::{Renderer, RendererScene},
+};
 use winit::{
     dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
@@ -18,6 +21,7 @@ use winit::{
 pub struct Engine {
     pub event_loop: Option<EventLoop<()>>,
     pub window: Window,
+    pub input: Input,
     pub instance: wgpu::Instance,
     pub surface: wgpu::Surface,
     pub adapter: wgpu::Adapter,
@@ -54,6 +58,9 @@ impl Engine {
             .with_resizable(false)
             .build(&event_loop)
             .unwrap();
+
+        // Create input cache
+        let input = Input::new();
 
         // Create wgpu instance, surface and adapter
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY | wgpu::BackendBit::SECONDARY);
@@ -107,6 +114,7 @@ impl Engine {
         Self {
             event_loop: Some(event_loop),
             window,
+            input,
             instance,
             surface,
             adapter,
@@ -156,6 +164,7 @@ impl Engine {
         // Run the mainloop
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
+            self.input.update(&event);
             match event {
                 Event::WindowEvent { event, window_id } if window_id == self.window.id() => {
                     match event {

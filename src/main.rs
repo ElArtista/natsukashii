@@ -7,6 +7,7 @@ extern crate log;
 #[macro_use]
 mod shader;
 mod engine;
+mod input;
 mod mesh;
 mod renderer;
 mod uniform;
