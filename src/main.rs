@@ -10,12 +10,14 @@ mod camera;
 mod engine;
 mod input;
 mod mesh;
+mod model;
 mod renderer;
 mod uniform;
 
 use engine::{Engine, EngineParams, WindowParams};
 use glam::{Mat4, Vec3};
 use mesh::{Index, Mesh, Vertex};
+use model::Model;
 use renderer::RendererScene;
 
 #[allow(dead_code)]
@@ -54,15 +56,19 @@ fn main() {
     // Create the engine
     let mut engine = futures::executor::block_on(Engine::new(&params));
 
-    // Create demo mesh and buffers
-    let mesh = demo_mesh();
-    let buffers = mesh.create_buffers(&engine.device);
+    // Create cornell box
+    let model = Model::cornell_box();
+    let buffers = model
+        .meshes
+        .iter()
+        .map(|m| m.centered().create_buffers(&engine.device))
+        .collect::<Vec<_>>();
 
     // Create demo scene
-    let cpos = (0.0, 0.0, 4.0).into();
+    let cpos = (0.0, 0.0, 3.5).into();
     let view = Mat4::look_at_rh(cpos, Vec3::ZERO, Vec3::Y);
     let scene = RendererScene {
-        meshes: vec![buffers],
+        meshes: buffers,
         view,
     };
     engine.set_scene(scene);
