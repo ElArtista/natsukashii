@@ -8,6 +8,7 @@ extern crate log;
 mod shader;
 mod camera;
 mod engine;
+mod geometry;
 mod input;
 mod mesh;
 mod model;
@@ -15,6 +16,7 @@ mod renderer;
 mod uniform;
 
 use engine::{Engine, EngineParams, WindowParams};
+use geometry::Centered;
 use glam::{Mat4, Vec3};
 use mesh::{Index, Mesh, Vertex};
 use model::Model;
@@ -60,8 +62,9 @@ fn main() {
     let model = Model::cornell_box();
     let buffers = model
         .meshes
+        .centered()
         .iter()
-        .map(|m| m.centered().create_buffers(&engine.device))
+        .map(|m| m.create_buffers(&engine.device))
         .collect::<Vec<_>>();
 
     // Create demo scene

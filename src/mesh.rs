@@ -2,6 +2,7 @@
 // mesh.rs
 //
 
+use super::geometry::Positions;
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 use std::mem::size_of;
@@ -44,35 +45,15 @@ impl Mesh {
         let nelems = self.indices.len() as _;
         MeshBuffers { vbuf, ibuf, nelems }
     }
+}
 
-    pub fn bounding_box(&self) -> (Vec3, Vec3) {
-        (
-            self.vertices
-                .iter()
-                .map(|v| v.position)
-                .fold(Vec3::splat(std::f32::MAX), |m, v| m.min(v)),
-            self.vertices
-                .iter()
-                .map(|v| v.position)
-                .fold(Vec3::splat(std::f32::MIN), |m, v| m.max(v)),
-        )
+impl Positions for Mesh {
+    fn iter_pos(&self) -> Box<dyn Iterator<Item = &Vec3> + '_> {
+        Box::new(self.vertices.iter().map(|v| &v.position))
     }
 
-    pub fn centered(&self) -> Self {
-        let bbox = self.bounding_box();
-        let diff = (bbox.0 + bbox.1) / 2.0;
-        Self {
-            vertices: self
-                .vertices
-                .iter()
-                .map(|v| {
-                    let mut tv = v.clone();
-                    tv.position -= diff;
-                    tv
-                })
-                .collect(),
-            indices: self.indices.clone(),
-        }
+    fn iter_pos_mut(&mut self) -> Box<dyn Iterator<Item = &mut Vec3> + '_> {
+        Box::new(self.vertices.iter_mut().map(|v| &mut v.position))
     }
 }
 
