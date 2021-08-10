@@ -40,18 +40,18 @@ impl Model {
         let meshes = data
             .objects
             .iter()
-            .map(|o| {
+            .flat_map(|o| &o.groups)
+            .map(|g| {
                 let mut vertices = vec![];
                 let mut indexer = LruIndexer::new(16, |_, t: IndexTuple| {
                     let pos = data.position[t.0];
                     let vtx = Vertex::new(pos.into());
                     vertices.push(vtx)
                 });
-                let indices = o
-                    .groups
+                let indices = g
+                    .polys
                     .iter()
                     .cloned()
-                    .flat_map(|g| g.polys)
                     .map(|p| p.into_genmesh())
                     .triangulate()
                     .vertices()
