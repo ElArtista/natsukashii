@@ -4,8 +4,8 @@
 
 use super::mesh::{Mesh, Vertex};
 use genmesh::{Indexer, LruIndexer, Triangulate, Vertices};
-use obj::{IndexTuple, ObjData};
-use std::{collections::HashMap, ffi::OsStr, io::Read, path::Path};
+use obj::{IndexTuple, Obj, ObjData};
+use std::{collections::HashMap, ffi::OsStr, io::BufRead, path::Path};
 
 macro_rules! model_file {
     ($x:expr) => {
@@ -29,22 +29,28 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn from_buffers<R: Read + Copy>(name: &str, buffers: HashMap<String, R>) -> Self {
+    pub fn from_buffers<R: BufRead + Copy>(name: &str, buffers: HashMap<String, R>) -> Self {
         let file = buffers
             .keys()
             .filter(|f| extension_from_filename(f) == "obj")
             .next()
             .unwrap();
-        let data = ObjData::load_buf(buffers[file]).unwrap();
+        let mut obj = Obj {
+            data: ObjData::load_buf(buffers[file]).unwrap(),
+            path: file.into(),
+        };
+        obj.load_mtls_fn(|_, mtllib| Result::Ok(buffers[mtllib]))
+            .unwrap();
 
-        let meshes = data
+        let meshes = obj
+            .data
             .objects
             .iter()
             .flat_map(|o| &o.groups)
             .map(|g| {
                 let mut vertices = vec![];
                 let mut indexer = LruIndexer::new(16, |_, t: IndexTuple| {
-                    let pos = data.position[t.0];
+                    let pos = obj.data.position[t.0];
                     let vtx = Vertex::new(pos.into());
                     vertices.push(vtx)
                 });
