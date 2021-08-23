@@ -3,6 +3,7 @@ name = "natsukashii"
 version = "0.1.0"
 authors = ["Agorgianitis Loukas <agorglouk@gmail.com>"]
 edition = "2018"
+resolver = "2"
 
 [dependencies]
 bytemuck = { version = "1.7.0", features = ["derive", "extern_crate_alloc"] }
@@ -13,7 +14,7 @@ glam = { version = "0.17.3", features = ["bytemuck", "mint"] }
 log = "0.4.14"
 obj = { version = "0.10.2", features = ["genmesh"] }
 rand = "0.8.4"
-wgpu = "0.9.0"
+wgpu = { version = "0.10.1", features = ["spirv"] }
 winit = "0.25.0"
 
 [build-dependencies]

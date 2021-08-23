@@ -35,12 +35,12 @@ impl Mesh {
         let vbuf = device.create_buffer_init(&BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&self.vertices),
-            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC,
         });
         let ibuf = device.create_buffer_init(&BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&self.indices),
-            usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_SRC,
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_SRC,
         });
         let nelems = self.indices.len() as _;
         MeshBuffers { vbuf, ibuf, nelems }
@@ -77,7 +77,7 @@ impl Vertex {
 
     pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            step_mode: wgpu::InputStepMode::Vertex,
+            step_mode: wgpu::VertexStepMode::Vertex,
             array_stride: size_of::<Self>() as _,
             attributes: Self::ATTRIBUTES,
         }

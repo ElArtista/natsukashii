@@ -36,12 +36,12 @@ struct DemoPass {
 }
 
 impl Renderer {
-    pub fn new(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> Self {
+    pub fn new(device: &wgpu::Device, surface_conf: &wgpu::SurfaceConfiguration) -> Self {
         // Setup view projetion uniform
         let view_proj_data = ViewProjUniform {
             proj: Mat4::perspective_rh_gl(
                 (45.0f32).to_radians(),
-                swapchain_desc.width as f32 / swapchain_desc.height as f32,
+                surface_conf.width as f32 / surface_conf.height as f32,
                 0.1,
                 100.0,
             ),
@@ -59,7 +59,7 @@ impl Renderer {
         });
 
         // Setup demo pass
-        let demo_pass = DemoPass::new(device, swapchain_desc, &view_proj_layout);
+        let demo_pass = DemoPass::new(device, surface_conf, &view_proj_layout);
 
         Renderer {
             view_proj: ViewProj {
@@ -72,9 +72,9 @@ impl Renderer {
         }
     }
 
-    pub fn resize(&mut self, device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) {
-        // Recreate swapchain dependent passes
-        self.demo_pass = DemoPass::new(device, swapchain_desc, &self.view_proj.layout);
+    pub fn resize(&mut self, device: &wgpu::Device, surface_conf: &wgpu::SurfaceConfiguration) {
+        // Recreate surface dependent passes
+        self.demo_pass = DemoPass::new(device, surface_conf, &self.view_proj.layout);
     }
 
     pub fn render(
@@ -103,7 +103,7 @@ impl Renderer {
 impl DemoPass {
     pub fn new(
         device: &wgpu::Device,
-        swapchain_desc: &wgpu::SwapChainDescriptor,
+        surface_conf: &wgpu::SurfaceConfiguration,
         view_proj_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let vsrc = include_shader!("demo.vert");
@@ -114,15 +114,15 @@ impl DemoPass {
         let depth_format = wgpu::TextureFormat::Depth32Float;
         let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
-                width: swapchain_desc.width,
-                height: swapchain_desc.height,
+                width: surface_conf.width,
+                height: surface_conf.height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: depth_format,
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             label: None,
         });
         let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -143,7 +143,7 @@ impl DemoPass {
             fragment: Some(wgpu::FragmentState {
                 module: &fshader,
                 entry_point: "main",
-                targets: &[swapchain_desc.format.into()],
+                targets: &[surface_conf.format.into()],
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: Some(wgpu::DepthStencilState {

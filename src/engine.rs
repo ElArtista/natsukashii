@@ -27,11 +27,10 @@ pub struct Engine {
     pub input: Input,
     pub instance: wgpu::Instance,
     pub surface: wgpu::Surface,
+    pub surface_conf: wgpu::SurfaceConfiguration,
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub swapchain: wgpu::SwapChain,
-    pub swapchain_desc: wgpu::SwapChainDescriptor,
     pub renderer: Renderer,
     pub scene: RendererScene,
     pub camera: Camera,
@@ -67,7 +66,7 @@ impl Engine {
         let input = Input::new();
 
         // Create wgpu instance, surface and adapter
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY | wgpu::BackendBit::SECONDARY);
+        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY | wgpu::Backends::SECONDARY);
         let surface = unsafe { instance.create_surface(&window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -91,20 +90,20 @@ impl Engine {
             .await
             .expect("Failed to create device");
 
-        // Create swapchain
+        // Configure surface
         let size = window.inner_size();
-        let swapchain_format = adapter.get_swap_chain_preferred_format(&surface).unwrap();
-        let swapchain_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: swapchain_format,
+        let surface_format = surface.get_preferred_format(&adapter).unwrap();
+        let surface_conf = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Mailbox,
         };
-        let swapchain = device.create_swap_chain(&surface, &swapchain_desc);
+        surface.configure(&device, &surface_conf);
 
         // Create the renderer
-        let renderer = Renderer::new(&device, &swapchain_desc);
+        let renderer = Renderer::new(&device, &surface_conf);
 
         // Create default empty scene
         let scene = RendererScene::default();
@@ -124,11 +123,10 @@ impl Engine {
             input,
             instance,
             surface,
+            surface_conf,
             adapter,
             device,
             queue,
-            swapchain,
-            swapchain_desc,
             renderer,
             scene,
             camera,
@@ -137,14 +135,12 @@ impl Engine {
     }
 
     pub fn resize(&mut self, size: (u32, u32)) {
-        // Recreate the swap chain with the new size
-        self.swapchain_desc.width = size.0;
-        self.swapchain_desc.height = size.1;
-        self.swapchain = self
-            .device
-            .create_swap_chain(&self.surface, &self.swapchain_desc);
+        // Configure the surface with the new size
+        self.surface_conf.width = size.0;
+        self.surface_conf.height = size.1;
+        self.surface.configure(&self.device, &self.surface_conf);
         // Resize renderer resources
-        self.renderer.resize(&self.device, &self.swapchain_desc);
+        self.renderer.resize(&self.device, &self.surface_conf);
     }
 
     pub fn update(&mut self) {
@@ -174,19 +170,24 @@ impl Engine {
 
     pub fn render(&self) {
         // Acquire frame
-        let (swapchain, device, queue) = (&self.swapchain, &self.device, &self.queue);
-        let frame = swapchain
+        let (surface, device, queue) = (&self.surface, &self.device, &self.queue);
+        let frame = surface
             .get_current_frame()
-            .expect("Failed to acquire next swap chain texture")
+            .expect("Failed to acquire next surface texture")
             .output;
 
         // Create encoder
         let encoder_desc = wgpu::CommandEncoderDescriptor { label: None };
         let mut encoder = device.create_command_encoder(&encoder_desc);
 
+        // Create output view
+        let view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
         // Render and submit the queue
         self.renderer
-            .render(&mut encoder, queue, &frame.view, &self.scene);
+            .render(&mut encoder, queue, &view, &self.scene);
         queue.submit(Some(encoder.finish()));
     }
 
