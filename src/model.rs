@@ -4,6 +4,7 @@
 
 use super::mesh::{Mesh, Vertex};
 use genmesh::{Indexer, LruIndexer, Triangulate, Vertices};
+use glam::Vec3;
 use obj::{IndexTuple, Obj, ObjData};
 use std::{collections::HashMap, ffi::OsStr, io::BufRead, path::Path};
 
@@ -51,7 +52,8 @@ impl Model {
                 let mut vertices = vec![];
                 let mut indexer = LruIndexer::new(16, |_, t: IndexTuple| {
                     let pos = obj.data.position[t.0];
-                    let vtx = Vertex::new(pos.into());
+                    let inv = Vec3::new(1.0, 1.0, -1.0);
+                    let vtx = Vertex::new(Vec3::from_slice(&pos) * inv);
                     vertices.push(vtx)
                 });
                 let indices = g

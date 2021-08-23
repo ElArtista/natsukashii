@@ -68,8 +68,8 @@ fn main() {
         .collect::<Vec<_>>();
 
     // Create demo scene
-    let cpos = (0.0, 0.0, 3.5).into();
-    let view = Mat4::look_at_rh(cpos, Vec3::ZERO, Vec3::Y);
+    let cpos = (0.0, 0.0, -3.5).into();
+    let view = Mat4::look_at_lh(cpos, Vec3::ZERO, Vec3::Y);
     let scene = RendererScene {
         meshes: buffers,
         view,

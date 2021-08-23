@@ -59,7 +59,7 @@ impl Camera {
 
         dx *= self.acceleration * dt;
         dz *= self.acceleration * dt;
-        self.velocity += (-dz * forward) + (dx * strafe);
+        self.velocity += (dz * forward) + (dx * strafe);
         self.velocity = self.velocity.clamp_length(0.0, self.max_velocity);
     }
 
@@ -84,8 +84,8 @@ impl Camera {
 
         // Rotation
         self.angles += self.angular_velocity;
-        let qp = Quat::from_rotation_x(-self.angles.x);
-        let qy = Quat::from_rotation_y(-self.angles.y);
+        let qp = Quat::from_rotation_x(self.angles.x);
+        let qy = Quat::from_rotation_y(self.angles.y);
         self.rotation = (qy * qp).normalize();
         self.angular_velocity *= (1e-4 as f32).powf(dt);
     }

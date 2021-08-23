@@ -39,7 +39,7 @@ impl Renderer {
     pub fn new(device: &wgpu::Device, surface_conf: &wgpu::SurfaceConfiguration) -> Self {
         // Setup view projetion uniform
         let view_proj_data = ViewProjUniform {
-            proj: Mat4::perspective_rh_gl(
+            proj: Mat4::perspective_lh(
                 (45.0f32).to_radians(),
                 surface_conf.width as f32 / surface_conf.height as f32,
                 0.1,
