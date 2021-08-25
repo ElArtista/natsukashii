@@ -7,7 +7,6 @@ use super::{
     input::Input,
     renderer::{Renderer, RendererScene},
     scene::Scene,
-    uniform::TransformUniform,
 };
 
 use glam::Vec3;
@@ -259,11 +258,7 @@ impl Engine {
 
     pub fn set_scene(&mut self, scene: Scene) {
         self.scene = scene;
-        self.renderer_scene = RendererScene::create(
-            &self.device,
-            &self.scene,
-            &TransformUniform::layout(&self.device),
-        );
+        self.renderer_scene = self.renderer.create_scene(&self.device, &self.scene);
     }
 
     pub fn set_camera_position(&mut self, position: Vec3) {

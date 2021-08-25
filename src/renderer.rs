@@ -4,6 +4,7 @@
 
 use crate::{
     mesh::{Index, IndexFormat, MeshBuffers, Vertex},
+    scene::Scene,
     uniform::{TransformUniform, ViewProjUniform},
 };
 use glam::Mat4;
@@ -91,6 +92,27 @@ impl Renderer {
             &self.view_proj.layout,
             &self.transform_layout,
         );
+    }
+
+    pub fn create_scene(&self, device: &wgpu::Device, scene: &Scene) -> RendererScene {
+        let objects = scene
+            .objects
+            .iter()
+            .map(|object| {
+                let meshes = object
+                    .meshes
+                    .iter()
+                    .map(|m| m.create_buffers(device))
+                    .collect();
+                let transform = TransformUniform {
+                    model: object.transform,
+                }
+                .create_bind_group(device, &self.transform_layout);
+                RendererSceneObject { meshes, transform }
+            })
+            .collect();
+        let view = scene.view;
+        RendererScene { objects, view }
     }
 
     pub fn render(
