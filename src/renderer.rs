@@ -18,11 +18,11 @@ pub struct Renderer {
 
 #[derive(Default)]
 pub struct RendererScene {
-    pub objects: Vec<RendererObject>,
+    pub objects: Vec<RendererSceneObject>,
     pub view: Mat4,
 }
 
-pub struct RendererObject {
+pub struct RendererSceneObject {
     pub meshes: Vec<MeshBuffers>,
     pub transform: wgpu::BindGroup,
 }

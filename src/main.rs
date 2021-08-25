@@ -13,6 +13,7 @@ mod input;
 mod mesh;
 mod model;
 mod renderer;
+mod scene;
 mod uniform;
 
 use engine::{Engine, EngineParams, WindowParams};
@@ -20,8 +21,7 @@ use geometry::Centered;
 use glam::{Mat4, Vec3};
 use mesh::{Index, Mesh, Vertex};
 use model::Model;
-use renderer::{RendererObject, RendererScene};
-use uniform::TransformUniform;
+use scene::{Scene, SceneObject};
 
 #[allow(dead_code)]
 fn demo_mesh() -> Mesh {
@@ -61,25 +61,15 @@ fn main() {
 
     // Create cornell box
     let model = Model::cornell_box();
-    let buffers = model
-        .meshes
-        .centered()
-        .iter()
-        .map(|m| m.create_buffers(&engine.device))
-        .collect::<Vec<_>>();
-
-    let transform = TransformUniform {
-        model: Mat4::IDENTITY,
-    }
-    .create_bind_group(&engine.device, &TransformUniform::layout(&engine.device));
+    let meshes = model.meshes.centered();
 
     // Create demo scene
     let cpos = (0.0, 0.0, -3.5).into();
     let view = Mat4::look_at_lh(cpos, Vec3::ZERO, Vec3::Y);
-    let scene = RendererScene {
-        objects: vec![RendererObject {
-            meshes: buffers,
-            transform,
+    let scene = Scene {
+        objects: vec![SceneObject {
+            meshes,
+            transform: Mat4::IDENTITY,
         }],
         view,
     };

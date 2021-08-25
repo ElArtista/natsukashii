@@ -6,6 +6,8 @@ use super::{
     camera::{Camera, CameraMoveDirection},
     input::Input,
     renderer::{Renderer, RendererScene},
+    scene::Scene,
+    uniform::TransformUniform,
 };
 
 use glam::Vec3;
@@ -32,7 +34,8 @@ pub struct Engine {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub renderer: Renderer,
-    pub scene: RendererScene,
+    pub renderer_scene: RendererScene,
+    pub scene: Scene,
     pub camera: Camera,
     pub state: EngineState,
 }
@@ -106,7 +109,10 @@ impl Engine {
         let renderer = Renderer::new(&device, &surface_conf);
 
         // Create default empty scene
-        let scene = RendererScene::default();
+        let scene = Scene::default();
+
+        // Create default empty renderer scene
+        let renderer_scene = RendererScene::default();
 
         // Create the camera
         let camera = Camera::new();
@@ -128,6 +134,7 @@ impl Engine {
             device,
             queue,
             renderer,
+            renderer_scene,
             scene,
             camera,
             state,
@@ -166,6 +173,7 @@ impl Engine {
 
         self.camera.update(dt);
         self.scene.view = self.camera.matrix();
+        self.renderer_scene.view = self.scene.view;
     }
 
     pub fn render(&self) {
@@ -187,7 +195,7 @@ impl Engine {
 
         // Render and submit the queue
         self.renderer
-            .render(&mut encoder, queue, &view, &self.scene);
+            .render(&mut encoder, queue, &view, &self.renderer_scene);
         queue.submit(Some(encoder.finish()));
     }
 
@@ -249,8 +257,13 @@ impl Engine {
         });
     }
 
-    pub fn set_scene(&mut self, scene: RendererScene) {
+    pub fn set_scene(&mut self, scene: Scene) {
         self.scene = scene;
+        self.renderer_scene = RendererScene::create(
+            &self.device,
+            &self.scene,
+            &TransformUniform::layout(&self.device),
+        );
     }
 
     pub fn set_camera_position(&mut self, position: Vec3) {
