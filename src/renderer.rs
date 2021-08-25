@@ -14,6 +14,7 @@ use glam::Mat4;
 pub struct Renderer {
     view_proj: ViewProj,
     demo_pass: DemoPass,
+    transform_layout: wgpu::BindGroupLayout,
 }
 
 #[derive(Default)]
@@ -39,7 +40,6 @@ struct ViewProj {
 struct DemoPass {
     pipeline: wgpu::RenderPipeline,
     depth_texture_view: wgpu::TextureView,
-    transform_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer {
@@ -65,8 +65,11 @@ impl Renderer {
             }],
         });
 
+        // Create transform uniform layout
+        let transform_layout = TransformUniform::layout(&device);
+
         // Setup demo pass
-        let demo_pass = DemoPass::new(device, surface_conf, &view_proj_layout);
+        let demo_pass = DemoPass::new(device, surface_conf, &view_proj_layout, &transform_layout);
 
         Renderer {
             view_proj: ViewProj {
@@ -76,12 +79,18 @@ impl Renderer {
                 bind_group: view_proj_bind_group,
             },
             demo_pass,
+            transform_layout,
         }
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, surface_conf: &wgpu::SurfaceConfiguration) {
         // Recreate surface dependent passes
-        self.demo_pass = DemoPass::new(device, surface_conf, &self.view_proj.layout);
+        self.demo_pass = DemoPass::new(
+            device,
+            surface_conf,
+            &self.view_proj.layout,
+            &self.transform_layout,
+        );
     }
 
     pub fn render(
@@ -112,6 +121,7 @@ impl DemoPass {
         device: &wgpu::Device,
         surface_conf: &wgpu::SurfaceConfiguration,
         view_proj_layout: &wgpu::BindGroupLayout,
+        transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let vsrc = include_shader!("demo.vert");
         let fsrc = include_shader!("demo.frag");
@@ -134,10 +144,9 @@ impl DemoPass {
         });
         let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let transform_layout = TransformUniform::layout(&device);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[view_proj_layout, &transform_layout],
+            bind_group_layouts: &[view_proj_layout, transform_layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -167,7 +176,6 @@ impl DemoPass {
         DemoPass {
             pipeline,
             depth_texture_view,
-            transform_layout,
         }
     }
 
