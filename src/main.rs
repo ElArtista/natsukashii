@@ -20,7 +20,8 @@ use geometry::Centered;
 use glam::{Mat4, Vec3};
 use mesh::{Index, Mesh, Vertex};
 use model::Model;
-use renderer::RendererScene;
+use renderer::{RendererObject, RendererScene};
+use uniform::TransformUniform;
 
 #[allow(dead_code)]
 fn demo_mesh() -> Mesh {
@@ -67,11 +68,19 @@ fn main() {
         .map(|m| m.create_buffers(&engine.device))
         .collect::<Vec<_>>();
 
+    let transform = TransformUniform {
+        model: Mat4::IDENTITY,
+    }
+    .create_bind_group(&engine.device, &TransformUniform::layout(&engine.device));
+
     // Create demo scene
     let cpos = (0.0, 0.0, -3.5).into();
     let view = Mat4::look_at_lh(cpos, Vec3::ZERO, Vec3::Y);
     let scene = RendererScene {
-        meshes: buffers,
+        objects: vec![RendererObject {
+            meshes: buffers,
+            transform,
+        }],
         view,
     };
     engine.set_scene(scene);

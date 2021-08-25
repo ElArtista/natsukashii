@@ -4,7 +4,7 @@
 
 use crate::{
     mesh::{Index, IndexFormat, MeshBuffers, Vertex},
-    uniform::ViewProjUniform,
+    uniform::{TransformUniform, ViewProjUniform},
 };
 use glam::Mat4;
 
@@ -18,8 +18,13 @@ pub struct Renderer {
 
 #[derive(Default)]
 pub struct RendererScene {
-    pub meshes: Vec<MeshBuffers>,
+    pub objects: Vec<RendererObject>,
     pub view: Mat4,
+}
+
+pub struct RendererObject {
+    pub meshes: Vec<MeshBuffers>,
+    pub transform: wgpu::BindGroup,
 }
 
 #[allow(dead_code)]
@@ -30,9 +35,11 @@ struct ViewProj {
     bind_group: wgpu::BindGroup,
 }
 
+#[allow(dead_code)]
 struct DemoPass {
     pipeline: wgpu::RenderPipeline,
     depth_texture_view: wgpu::TextureView,
+    transform_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer {
@@ -127,9 +134,10 @@ impl DemoPass {
         });
         let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let transform_layout = TransformUniform::layout(&device);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[view_proj_layout],
+            bind_group_layouts: &[view_proj_layout, &transform_layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -159,6 +167,7 @@ impl DemoPass {
         DemoPass {
             pipeline,
             depth_texture_view,
+            transform_layout,
         }
     }
 
@@ -192,10 +201,13 @@ impl DemoPass {
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &view_proj_bind_group, &[]);
 
-        for mesh in &scene.meshes {
-            rpass.set_vertex_buffer(0, mesh.vbuf.slice(..));
-            rpass.set_index_buffer(mesh.ibuf.slice(..), Index::format());
-            rpass.draw_indexed(0..mesh.nelems, 0, 0..1);
+        for o in &scene.objects {
+            rpass.set_bind_group(1, &o.transform, &[]);
+            for m in &o.meshes {
+                rpass.set_vertex_buffer(0, m.vbuf.slice(..));
+                rpass.set_index_buffer(m.ibuf.slice(..), Index::format());
+                rpass.draw_indexed(0..m.nelems, 0, 0..1);
+            }
         }
     }
 }
