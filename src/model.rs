@@ -5,7 +5,7 @@
 use super::mesh::{Mesh, Vertex};
 use genmesh::{Indexer, LruIndexer, Triangulate, Vertices};
 use glam::Vec3;
-use obj::{IndexTuple, Obj, ObjData};
+use obj::{IndexTuple, Obj, ObjData, ObjMaterial};
 use std::{collections::HashMap, ffi::OsStr, io::BufRead, path::Path};
 
 macro_rules! model_file {
@@ -24,9 +24,18 @@ macro_rules! model_buffers {
     };
 }
 
+#[derive(Debug)]
 pub struct Model {
     pub name: String,
     pub meshes: Vec<Mesh>,
+    pub materials: Vec<Material>,
+    pub mesh_materials: Vec<Option<String>>,
+}
+
+#[derive(Debug)]
+pub struct Material {
+    pub name: String,
+    pub albedo: Vec3,
 }
 
 impl Model {
@@ -70,9 +79,35 @@ impl Model {
             })
             .collect::<Vec<_>>();
 
+        let mesh_materials = obj
+            .data
+            .objects
+            .iter()
+            .flat_map(|o| &o.groups)
+            .map(|g| {
+                g.material.as_ref().map(|m| match m {
+                    ObjMaterial::Ref(s) => s.clone(),
+                    ObjMaterial::Mtl(m) => m.name.clone(),
+                })
+            })
+            .collect();
+
+        let materials = obj
+            .data
+            .material_libs
+            .iter()
+            .flat_map(|m| &m.materials)
+            .map(|m| Material {
+                name: m.name.clone(),
+                albedo: m.ka.map_or(Vec3::ZERO, Into::into),
+            })
+            .collect();
+
         Model {
             name: name.to_owned(),
             meshes,
+            materials,
+            mesh_materials,
         }
     }
 

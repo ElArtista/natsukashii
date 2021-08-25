@@ -62,6 +62,22 @@ fn main() {
     // Create cornell box
     let model = Model::cornell_box();
     let meshes = model.meshes.centered();
+    let materials = model
+        .mesh_materials
+        .iter()
+        .map(|m| {
+            m.as_ref()
+                .map(|m| {
+                    model
+                        .materials
+                        .iter()
+                        .filter(|x| *m == x.name)
+                        .next()
+                        .map(|m| (m.albedo,))
+                })
+                .flatten()
+        })
+        .collect();
 
     // Create demo scene
     let cpos = (0.0, 0.0, -3.5).into();
@@ -69,6 +85,7 @@ fn main() {
     let scene = Scene {
         objects: vec![SceneObject {
             meshes,
+            materials,
             transform: Mat4::IDENTITY,
         }],
         view,

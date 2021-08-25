@@ -5,7 +5,7 @@
 use crate::{
     mesh::{Index, IndexFormat, MeshBuffers, Vertex},
     scene::Scene,
-    uniform::{TransformUniform, ViewProjUniform},
+    uniform::{MaterialUniform, TransformUniform, ViewProjUniform},
 };
 use glam::Mat4;
 
@@ -16,6 +16,7 @@ pub struct Renderer {
     view_proj: ViewProj,
     demo_pass: DemoPass,
     transform_layout: wgpu::BindGroupLayout,
+    material_layout: wgpu::BindGroupLayout,
 }
 
 #[derive(Default)]
@@ -26,6 +27,7 @@ pub struct RendererScene {
 
 pub struct RendererSceneObject {
     pub meshes: Vec<MeshBuffers>,
+    pub materials: Vec<wgpu::BindGroup>,
     pub transform: wgpu::BindGroup,
 }
 
@@ -66,11 +68,18 @@ impl Renderer {
             }],
         });
 
-        // Create transform uniform layout
+        // Create uniform layouts
         let transform_layout = TransformUniform::layout(&device);
+        let material_layout = MaterialUniform::layout(&device);
 
         // Setup demo pass
-        let demo_pass = DemoPass::new(device, surface_conf, &view_proj_layout, &transform_layout);
+        let demo_pass = DemoPass::new(
+            device,
+            surface_conf,
+            &view_proj_layout,
+            &transform_layout,
+            &material_layout,
+        );
 
         Renderer {
             view_proj: ViewProj {
@@ -81,6 +90,7 @@ impl Renderer {
             },
             demo_pass,
             transform_layout,
+            material_layout,
         }
     }
 
@@ -91,6 +101,7 @@ impl Renderer {
             surface_conf,
             &self.view_proj.layout,
             &self.transform_layout,
+            &self.material_layout,
         );
     }
 
@@ -104,13 +115,28 @@ impl Renderer {
                     .iter()
                     .map(|m| m.create_buffers(device))
                     .collect();
+                let materials = object
+                    .materials
+                    .iter()
+                    .map(|m| {
+                        MaterialUniform {
+                            albedo: m.unwrap_or_default().0,
+                        }
+                        .create_bind_group(device, &self.material_layout)
+                    })
+                    .collect();
                 let transform = TransformUniform {
                     model: object.transform,
                 }
                 .create_bind_group(device, &self.transform_layout);
-                RendererSceneObject { meshes, transform }
+                RendererSceneObject {
+                    meshes,
+                    materials,
+                    transform,
+                }
             })
             .collect();
+
         let view = scene.view;
         RendererScene { objects, view }
     }
@@ -144,6 +170,7 @@ impl DemoPass {
         surface_conf: &wgpu::SurfaceConfiguration,
         view_proj_layout: &wgpu::BindGroupLayout,
         transform_layout: &wgpu::BindGroupLayout,
+        material_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let vsrc = include_shader!("demo.vert");
         let fsrc = include_shader!("demo.frag");
@@ -168,7 +195,7 @@ impl DemoPass {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[view_proj_layout, transform_layout],
+            bind_group_layouts: &[view_proj_layout, transform_layout, material_layout],
             push_constant_ranges: &[],
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -233,7 +260,8 @@ impl DemoPass {
 
         for o in &scene.objects {
             rpass.set_bind_group(1, &o.transform, &[]);
-            for m in &o.meshes {
+            for (i, m) in o.meshes.iter().enumerate() {
+                rpass.set_bind_group(2, &o.materials[i], &[]);
                 rpass.set_vertex_buffer(0, m.vbuf.slice(..));
                 rpass.set_index_buffer(m.ibuf.slice(..), Index::format());
                 rpass.draw_indexed(0..m.nelems, 0, 0..1);
