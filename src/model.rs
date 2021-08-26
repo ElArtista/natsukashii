@@ -3,10 +3,9 @@
 //
 
 use super::mesh::{Mesh, Vertex};
-use genmesh::{Indexer, LruIndexer, Triangulate, Vertices};
 use glam::Vec3;
-use obj::{IndexTuple, Obj, ObjData, ObjMaterial};
 use std::{collections::HashMap, ffi::OsStr, io::BufRead, path::Path};
+use tobj::{load_mtl_buf, load_obj_buf, LoadOptions};
 
 macro_rules! model_file {
     ($x:expr) => {
@@ -24,7 +23,7 @@ macro_rules! model_buffers {
     };
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Model {
     pub name: String,
     pub meshes: Vec<Mesh>,
@@ -45,61 +44,52 @@ impl Model {
             .filter(|f| extension_from_filename(f) == "obj")
             .next()
             .unwrap();
-        let mut obj = Obj {
-            data: ObjData::load_buf(buffers[file]).unwrap(),
-            path: file.into(),
-        };
-        obj.load_mtls_fn(|_, mtllib| Result::Ok(buffers[mtllib]))
-            .unwrap();
 
-        let meshes = obj
-            .data
-            .objects
+        let mut buf = buffers[file];
+        let (mdls, mats) = load_obj_buf(
+            &mut buf,
+            &LoadOptions {
+                triangulate: true,
+                single_index: true,
+                ..Default::default()
+            },
+            |p| {
+                let mut buf = buffers[p.to_str().unwrap()];
+                load_mtl_buf(&mut buf)
+            },
+        )
+        .unwrap();
+        let mats = mats.unwrap_or_default();
+
+        let meshes = mdls
             .iter()
-            .flat_map(|o| &o.groups)
-            .map(|g| {
-                let mut vertices = vec![];
-                let mut indexer = LruIndexer::new(16, |_, t: IndexTuple| {
-                    let pos = obj.data.position[t.0];
-                    let inv = Vec3::new(1.0, 1.0, -1.0);
-                    let vtx = Vertex::new(Vec3::from_slice(&pos) * inv);
-                    vertices.push(vtx)
-                });
-                let indices = g
-                    .polys
-                    .iter()
-                    .cloned()
-                    .map(|p| p.into_genmesh())
-                    .triangulate()
-                    .vertices()
-                    .map(|v| indexer.index(v) as _)
-                    .collect::<Vec<_>>();
-
+            .map(|m| {
+                let mesh = &m.mesh;
+                let indices = mesh.indices.clone();
+                let vertices = (0..(mesh.positions.len() / 3))
+                    .map(|i| {
+                        let pos = &mesh.positions[(i * 3)..(i * 3 + 3)];
+                        let invert_z = Vec3::new(1.0, 1.0, -1.0);
+                        Vertex::new(Vec3::from_slice(pos) * invert_z)
+                    })
+                    .collect();
                 Mesh { vertices, indices }
-            })
-            .collect::<Vec<_>>();
-
-        let mesh_materials = obj
-            .data
-            .objects
-            .iter()
-            .flat_map(|o| &o.groups)
-            .map(|g| {
-                g.material.as_ref().map(|m| match m {
-                    ObjMaterial::Ref(s) => s.clone(),
-                    ObjMaterial::Mtl(m) => m.name.clone(),
-                })
             })
             .collect();
 
-        let materials = obj
-            .data
-            .material_libs
+        let materials = mats
             .iter()
-            .flat_map(|m| &m.materials)
             .map(|m| Material {
                 name: m.name.clone(),
-                albedo: m.ka.map_or(Vec3::ZERO, Into::into),
+                albedo: Vec3::from_slice(&m.diffuse),
+            })
+            .collect();
+
+        let mesh_materials = mdls
+            .iter()
+            .map(|m| {
+                let mesh = &m.mesh;
+                mesh.material_id.map(|id| mats[id].name.clone())
             })
             .collect();
 

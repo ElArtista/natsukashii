@@ -12,8 +12,8 @@ futures = "0.3.15"
 genmesh = "0.6.2"
 glam = { version = "0.17.3", features = ["bytemuck", "mint"] }
 log = "0.4.14"
-obj = { version = "0.10.2", features = ["genmesh"] }
 rand = "0.8.4"
+tobj = "3.2.0"
 wgpu = { version = "0.10.1", features = ["spirv"] }
 winit = "0.25.0"
 
