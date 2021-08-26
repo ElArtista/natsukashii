@@ -12,7 +12,7 @@ uniform Material {
 void main()
 {
     vec3 nrm = normalize(vnrm);
-    vec3 dir = normalize(vec3(0.5,0,-1));
+    vec3 dir = normalize(vec3(0.0, 1.0, 0.0) - vpos);
     vec3 col = alb * vec3(max(dot(nrm, dir), 0.0));
     fcolor = vec4(col, 1.0);
 }
