@@ -65,7 +65,12 @@ impl Model {
             .iter()
             .map(|m| {
                 let mesh = &m.mesh;
-                let indices = mesh.indices.clone();
+                let indices = mesh
+                    .indices
+                    .chunks(3)
+                    .map(|i| [i[2], i[1], i[0]])
+                    .flatten()
+                    .collect();
                 let vertices = (0..(mesh.positions.len() / 3))
                     .map(|i| {
                         let pos = &mesh.positions[(i * 3)..(i * 3 + 3)];
