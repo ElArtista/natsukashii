@@ -21,10 +21,12 @@ pub struct MeshBuffers {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+#[derive(Copy, Clone, Default, Debug, Pod, Zeroable)]
 pub struct Vertex {
     pub position: Vec3,
     _pad0: f32,
+    pub normal: Vec3,
+    _pad1: f32,
 }
 
 pub type Index = u32;
@@ -44,6 +46,35 @@ impl Mesh {
         });
         let nelems = self.indices.len() as _;
         MeshBuffers { vbuf, ibuf, nelems }
+    }
+
+    pub fn vertex(&self, face: usize, vert: usize) -> Vertex {
+        let idx = self.indices[face * 3] as usize;
+        self.vertices[idx + vert]
+    }
+
+    pub fn generate_normals(&mut self) {
+        let verts = &mut self.vertices;
+
+        for i in self.indices.chunks_exact(3) {
+            let v1 = verts[i[0] as usize];
+            let v2 = verts[i[1] as usize];
+            let v3 = verts[i[2] as usize];
+
+            let e1 = v2.position - v1.position;
+            let e2 = v3.position - v1.position;
+
+            let n = e1.cross(e2);
+
+            verts[i[0] as usize].normal += n;
+            verts[i[1] as usize].normal += n;
+            verts[i[2] as usize].normal += n;
+        }
+
+        for v in &mut self.vertices {
+            let n = v.normal.normalize();
+            v.normal = n
+        }
     }
 }
 
@@ -66,12 +97,17 @@ impl Vertex {
             shader_location: 0,
             format: wgpu::VertexFormat::Float32x3,
         },
+        wgpu::VertexAttribute {
+            offset: size_of::<[f32; 4]>() as _,
+            shader_location: 1,
+            format: wgpu::VertexFormat::Float32x3,
+        },
     ];
 
     pub fn new(position: Vec3) -> Self {
         Self {
             position,
-            _pad0: 0.0,
+            ..Default::default()
         }
     }
 

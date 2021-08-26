@@ -78,7 +78,10 @@ impl Model {
                         Vertex::new(Vec3::from_slice(pos) * invert_z)
                     })
                     .collect();
-                Mesh { vertices, indices }
+
+                let mut mesh = Mesh { vertices, indices };
+                mesh.generate_normals();
+                mesh
             })
             .collect();
 

@@ -42,7 +42,9 @@ fn demo_mesh() -> Mesh {
         .flatten()
         .collect();
 
-    Mesh { vertices, indices }
+    let mut mesh = Mesh { vertices, indices };
+    mesh.generate_normals();
+    mesh
 }
 
 fn main() {
