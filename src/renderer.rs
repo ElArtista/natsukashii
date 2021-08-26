@@ -14,7 +14,7 @@ use glam::Mat4;
 /// Manages GPU specific objects and performs the rendering
 pub struct Renderer {
     view_proj: ViewProj,
-    demo_pass: DemoPass,
+    forward_pass: ForwardPass,
     transform_layout: wgpu::BindGroupLayout,
     material_layout: wgpu::BindGroupLayout,
 }
@@ -40,7 +40,7 @@ struct ViewProj {
 }
 
 #[allow(dead_code)]
-struct DemoPass {
+struct ForwardPass {
     pipeline: wgpu::RenderPipeline,
     depth_texture_view: wgpu::TextureView,
 }
@@ -72,8 +72,8 @@ impl Renderer {
         let transform_layout = TransformUniform::layout(&device);
         let material_layout = MaterialUniform::layout(&device);
 
-        // Setup demo pass
-        let demo_pass = DemoPass::new(
+        // Setup forward pass
+        let forward_pass = ForwardPass::new(
             device,
             surface_conf,
             &view_proj_layout,
@@ -88,7 +88,7 @@ impl Renderer {
                 layout: view_proj_layout,
                 bind_group: view_proj_bind_group,
             },
-            demo_pass,
+            forward_pass,
             transform_layout,
             material_layout,
         }
@@ -96,7 +96,7 @@ impl Renderer {
 
     pub fn resize(&mut self, device: &wgpu::Device, surface_conf: &wgpu::SurfaceConfiguration) {
         // Recreate surface dependent passes
-        self.demo_pass = DemoPass::new(
+        self.forward_pass = ForwardPass::new(
             device,
             surface_conf,
             &self.view_proj.layout,
@@ -159,12 +159,13 @@ impl Renderer {
             }),
         );
 
-        // Make demo pass
-        self.demo_pass.execute(encoder, view, &vp.bind_group, scene);
+        // Make forward pass
+        self.forward_pass
+            .execute(encoder, view, &vp.bind_group, scene);
     }
 }
 
-impl DemoPass {
+impl ForwardPass {
     pub fn new(
         device: &wgpu::Device,
         surface_conf: &wgpu::SurfaceConfiguration,
@@ -172,8 +173,8 @@ impl DemoPass {
         transform_layout: &wgpu::BindGroupLayout,
         material_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let vsrc = include_shader!("demo.vert");
-        let fsrc = include_shader!("demo.frag");
+        let vsrc = include_shader!("forward.vert");
+        let fsrc = include_shader!("forward.frag");
         let vshader = device.create_shader_module(&vsrc);
         let fshader = device.create_shader_module(&fsrc);
 
@@ -222,7 +223,7 @@ impl DemoPass {
             multisample: wgpu::MultisampleState::default(),
         });
 
-        DemoPass {
+        ForwardPass {
             pipeline,
             depth_texture_view,
         }
