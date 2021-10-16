@@ -75,6 +75,7 @@ impl Engine {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 // Request an adapter which can render to our surface
                 compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
             })
             .await
             .expect("Failed to find an appropriate adapter");
@@ -179,9 +180,8 @@ impl Engine {
         // Acquire frame
         let (surface, device, queue) = (&self.surface, &self.device, &self.queue);
         let frame = surface
-            .get_current_frame()
-            .expect("Failed to acquire next surface texture")
-            .output;
+            .get_current_texture()
+            .expect("Failed to acquire next surface texture");
 
         // Create encoder
         let encoder_desc = wgpu::CommandEncoderDescriptor { label: None };
@@ -196,6 +196,7 @@ impl Engine {
         self.renderer
             .render(&mut encoder, queue, &view, &self.renderer_scene);
         queue.submit(Some(encoder.finish()));
+        frame.present();
     }
 
     pub fn run(mut self) {
