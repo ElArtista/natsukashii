@@ -11,7 +11,7 @@ use super::{
 
 use glam::Vec3;
 use winit::{
-    dpi::PhysicalSize,
+    dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -59,7 +59,7 @@ impl Engine {
         // Create window and its event loop
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_inner_size(PhysicalSize::<u32>::from(params.window.size))
+            .with_inner_size(LogicalSize::<u32>::from(params.window.size))
             .with_resizable(false)
             .build(&event_loop)
             .unwrap();
